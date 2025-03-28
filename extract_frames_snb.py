@@ -1,7 +1,7 @@
 import os
 import argparse
 import cv2
-import moviepy.editor
+from moviepy import *
 from tqdm import tqdm
 from multiprocessing import Pool
 cv2.setNumThreads(0)
@@ -110,16 +110,26 @@ def main(args):
 
     worker_args = []
     for league in os.listdir(video_dir):
+        print(league)
+        
         if '.zip' in league:
             continue
+
         league_dir = os.path.join(video_dir, league)
+        print(league_dir)
         for season in os.listdir(league_dir):
             season_dir = os.path.join(league_dir, season)
+            print(season_dir)
             for game in os.listdir(season_dir):
                 game_dir = os.path.join(season_dir, game)
+                print(game_dir)
                 for video_file in os.listdir(game_dir):
+                    
+                    print(video_file)
+                    print(original_resolution)
+                    print("is video?: " + str(video_file.endswith(original_resolution + '.mp4') | video_file.endswith(original_resolution + '.mkv')))
                     if (video_file.endswith(original_resolution + '.mp4') | video_file.endswith(original_resolution + '.mkv')):
-                        
+                        print(video_file)
                         worker_args.append((
                             os.path.join(league, season, game, video_file),
                             os.path.join(game_dir, video_file),
@@ -129,6 +139,7 @@ def main(args):
                             sample_fps
                         ))
 
+    print(worker_args)
     with Pool(num_workers) as p:
         for _ in tqdm(p.imap_unordered(worker, worker_args),
                     total=len(worker_args)):

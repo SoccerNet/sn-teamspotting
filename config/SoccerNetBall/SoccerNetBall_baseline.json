@@ -1,7 +1,7 @@
 {
-    "frame_dir": "/path/to/soccernetball/frames",
-    "save_dir": "/path/to/save",
-    "store_mode": "store",
+    "frame_dir": "/home/jupyter-an2652/soccernet/sn-teamspotting/original_frames",
+    "save_dir": "/home/jupyter-an2652/soccernet/sn-teamspotting/checkpoints/SoccerNetTeamBall",
+    "store_mode": "load",
     "batch_size": 4,
     "clip_len": 100,
     "crop_dim": -1,
@@ -21,11 +21,11 @@
     "n_layers": 2,
     "sgp_ks": 9,
     "sgp_r": 4,
-    "only_test": false,
+    "only_test": true,
     "criterion": "map",
     "num_workers": 4,
     "joint_train": {
-        "frame_dir": "/path/to/soccernet/frames",
+        "frame_dir": "/home/jupyter-an2652/soccernet/sn-teamspotting/original_frames",
         "dataset": "soccernet",
         "num_classes": 17
     }

@@ -1,1 +1,1 @@
-/labels/path/snbas
+/home/jupyter-an2652/SoccerNetData/SoccerNet/SN-BAS-2025/videos

@@ -218,6 +218,8 @@ def mAPevaluateTest(model, split, dataset, classes, printed=True, event_team = F
 
     #Store predictions
     store_json_snb(pred_file, pred_events, stride = dataset._stride)
+
+    return None
     
     if split == 'challenge':
         return None

@@ -26,7 +26,7 @@ from dataset.frame import ActionSpotVideoDataset
 
 
 #Constants
-EVAL_SPLITS = ['test', 'challenge']
+EVAL_SPLITS = ['test']
 STRIDE = 1
 STRIDE_SN = 12
 STRIDE_SNB = 2
@@ -114,6 +114,8 @@ def main(args):
         os.makedirs(args.save_dir + '/wandb_logs', exist_ok=True)
     wandb.init(config = args, dir = args.save_dir + '/wandb_logs', project = 'TDEED-snbas2025', name = args.model + '-' + str(args.seed))
 
+    print("getting dataset from args: " + str(args))
+    
     # Get datasets train, validation (and validation for map -> Video dataset)
     classes, joint_train_classes, train_data, val_data, val_data_frames = get_datasets(args)
 
@@ -128,15 +130,15 @@ def main(args):
     loader_batch_size = args.batch_size // args.acc_grad_iter
 
     # Dataloaders
-    train_loader = DataLoader(
-        train_data, shuffle=False, batch_size=loader_batch_size,
-        pin_memory=True, num_workers=args.num_workers,
-        prefetch_factor=2, worker_init_fn=worker_init_fn)
+    # train_loader = DataLoader(
+    #     train_data, shuffle=False, batch_size=loader_batch_size,
+    #     pin_memory=True, num_workers=args.num_workers,
+    #     prefetch_factor=2, worker_init_fn=worker_init_fn)
         
-    val_loader = DataLoader(
-        val_data, shuffle=False, batch_size=loader_batch_size,
-        pin_memory=True, num_workers=args.num_workers,
-        prefetch_factor=2, worker_init_fn=worker_init_fn)
+    # val_loader = DataLoader(
+    #     val_data, shuffle=False, batch_size=loader_batch_size,
+    #     pin_memory=True, num_workers=args.num_workers,
+    #     prefetch_factor=2, worker_init_fn=worker_init_fn)
                 
     # Model
     model = TDEEDModel(args=args)
@@ -147,104 +149,104 @@ def main(args):
         model._model.update_pred_head(n_classes)
         model._num_classes = np.array(n_classes).sum() 
 
-    optimizer, scaler = model.get_optimizer({'lr': args.learning_rate})
+    # optimizer, scaler = model.get_optimizer({'lr': args.learning_rate})
 
-    if not args.only_test:
-        # Warmup schedule
-        num_steps_per_epoch = len(train_loader) // args.acc_grad_iter
-        num_epochs, lr_scheduler = get_lr_scheduler(
-            args, optimizer, num_steps_per_epoch)
+    # if not args.only_test:
+    #     # Warmup schedule
+    #     num_steps_per_epoch = len(train_loader) // args.acc_grad_iter
+    #     num_epochs, lr_scheduler = get_lr_scheduler(
+    #         args, optimizer, num_steps_per_epoch)
         
-        losses = []
-        best_criterion = 0 if args.criterion == 'map' else float('inf')
-        epoch = 0
+    #     losses = []
+    #     best_criterion = 0 if args.criterion == 'map' else float('inf')
+    #     epoch = 0
 
-        print('START TRAINING EPOCHS')
-        for epoch in range(epoch, num_epochs):
+    #     print('START TRAINING EPOCHS')
+    #     for epoch in range(epoch, num_epochs):
 
-            time_train0 = time.time()
-            train_losses = model.epoch(
-                train_loader, optimizer, scaler,
-                lr_scheduler=lr_scheduler, acc_grad_iter=args.acc_grad_iter)
-            train_loss = train_losses['loss']
-            time_train1 = time.time()
-            time_train = time_train1 - time_train0
+    #         time_train0 = time.time()
+    #         train_losses = model.epoch(
+    #             train_loader, optimizer, scaler,
+    #             lr_scheduler=lr_scheduler, acc_grad_iter=args.acc_grad_iter)
+    #         train_loss = train_losses['loss']
+    #         time_train1 = time.time()
+    #         time_train = time_train1 - time_train0
             
-            time_val0 = time.time()
-            val_losses = model.epoch(val_loader, acc_grad_iter=args.acc_grad_iter)
-            val_loss = val_losses['loss']
-            time_val1 = time.time()
-            time_val = time_val1 - time_val0
+    #         time_val0 = time.time()
+    #         val_losses = model.epoch(val_loader, acc_grad_iter=args.acc_grad_iter)
+    #         val_loss = val_losses['loss']
+    #         time_val1 = time.time()
+    #         time_val = time_val1 - time_val0
 
-            better = False
-            val_mAP = 0
-            if args.criterion == 'loss':
-                if val_loss < best_criterion:
-                    best_criterion = val_loss
-                    better = True
-            elif args.criterion == 'map':
-                time_map = 0
-                if epoch >= args.start_val_epoch:
-                    time_map0 = time.time()
-                    val_mAP = mAPevaluate(model, val_data_frames, classes, printed=True, event_team = args.event_team, metric = 'at1')
-                    time_map1 = time.time()
-                    time_map = time_map1 - time_map0
-                    if val_mAP > best_criterion:
-                        best_criterion = val_mAP
-                        better = True
+    #         better = False
+    #         val_mAP = 0
+    #         if args.criterion == 'loss':
+    #             if val_loss < best_criterion:
+    #                 best_criterion = val_loss
+    #                 better = True
+    #         elif args.criterion == 'map':
+    #             time_map = 0
+    #             if epoch >= args.start_val_epoch:
+    #                 time_map0 = time.time()
+    #                 val_mAP = mAPevaluate(model, val_data_frames, classes, printed=True, event_team = args.event_team, metric = 'at1')
+    #                 time_map1 = time.time()
+    #                 time_map = time_map1 - time_map0
+    #                 if val_mAP > best_criterion:
+    #                     best_criterion = val_mAP
+    #                     better = True
             
-            #Printing info epoch
-            print('[Epoch {}] Train loss: {:0.5f} Val loss: {:0.5f}'.format(
-                epoch, train_loss, val_loss))
-            txt_losses_train = 'Train losses - lossC: {:0.5f} '.format(train_losses['lossC'])
-            txt_losses_val = 'Val losses - lossC: {:0.5f} '.format(val_losses['lossC'])
-            if 'lossD' in train_losses.keys():
-                txt_losses_train += '- lossD: {:0.5f} '.format(train_losses['lossD']) 
-                txt_losses_val += '- lossD: {:0.5f} '.format(val_losses['lossD'])
-            if 'lossT' in train_losses.keys():
-                txt_losses_train += '- lossT: {:0.5f} '.format(train_losses['lossT'])
-                txt_losses_val += '- lossT: {:0.5f} '.format(val_losses['lossT'])
-            print(txt_losses_train)
-            print(txt_losses_val)
-            if (args.criterion == 'map') & (epoch >= args.start_val_epoch):
-                print('Val mAP: {:0.5f}'.format(val_mAP))
-                if better:
-                    print('New best mAP epoch!')
-            print('Time train: ' + str(int(time_train // 60)) + 'min ' + str(np.round(time_train % 60, 2)) + 'sec')
-            print('Time val: ' + str(int(time_val // 60)) + 'min ' + str(np.round(time_val % 60, 2)) + 'sec')
-            if (args.criterion == 'map') & (epoch >= args.start_val_epoch):
-                print('Time map: ' + str(int(time_map // 60)) + 'min ' + str(np.round(time_map % 60, 2)) + 'sec')
+    #         #Printing info epoch
+    #         print('[Epoch {}] Train loss: {:0.5f} Val loss: {:0.5f}'.format(
+    #             epoch, train_loss, val_loss))
+    #         txt_losses_train = 'Train losses - lossC: {:0.5f} '.format(train_losses['lossC'])
+    #         txt_losses_val = 'Val losses - lossC: {:0.5f} '.format(val_losses['lossC'])
+    #         if 'lossD' in train_losses.keys():
+    #             txt_losses_train += '- lossD: {:0.5f} '.format(train_losses['lossD']) 
+    #             txt_losses_val += '- lossD: {:0.5f} '.format(val_losses['lossD'])
+    #         if 'lossT' in train_losses.keys():
+    #             txt_losses_train += '- lossT: {:0.5f} '.format(train_losses['lossT'])
+    #             txt_losses_val += '- lossT: {:0.5f} '.format(val_losses['lossT'])
+    #         print(txt_losses_train)
+    #         print(txt_losses_val)
+    #         if (args.criterion == 'map') & (epoch >= args.start_val_epoch):
+    #             print('Val mAP: {:0.5f}'.format(val_mAP))
+    #             if better:
+    #                 print('New best mAP epoch!')
+    #         print('Time train: ' + str(int(time_train // 60)) + 'min ' + str(np.round(time_train % 60, 2)) + 'sec')
+    #         print('Time val: ' + str(int(time_val // 60)) + 'min ' + str(np.round(time_val % 60, 2)) + 'sec')
+    #         if (args.criterion == 'map') & (epoch >= args.start_val_epoch):
+    #             print('Time map: ' + str(int(time_map // 60)) + 'min ' + str(np.round(time_map % 60, 2)) + 'sec')
 
-            losses.append({
-                'epoch': epoch, 'train': train_loss, 'val': val_loss,
-                'val_mAP': val_mAP
-            })
+    #         losses.append({
+    #             'epoch': epoch, 'train': train_loss, 'val': val_loss,
+    #             'val_mAP': val_mAP
+    #         })
 
-            # Log to wandb
-            if (args.criterion == 'map'):
-                wandb.log({'losses/train/loss': train_loss, 'losses/val/loss': val_loss, 'losses/val/mAP': val_mAP, 'times/time_train': time_train, 'times/time_val': time_val, 'times/time_map': time_map})
-            else:
-                wandb.log({'losses/train/loss': train_loss, 'losses/val/loss': val_loss, 'times/time_train': time_train, 'times/time_val': time_val})
+    #         # Log to wandb
+    #         if (args.criterion == 'map'):
+    #             wandb.log({'losses/train/loss': train_loss, 'losses/val/loss': val_loss, 'losses/val/mAP': val_mAP, 'times/time_train': time_train, 'times/time_val': time_val, 'times/time_map': time_map})
+    #         else:
+    #             wandb.log({'losses/train/loss': train_loss, 'losses/val/loss': val_loss, 'times/time_train': time_train, 'times/time_val': time_val})
 
-            if (args.radi_displacement > 0) & (args.event_team):
-                wandb.log({'losses/train/lossC': train_losses['lossC'], 'losses/train/lossD': train_losses['lossD'], 'losses/train/lossT': train_losses['lossT'], 'losses/val/lossC': val_losses['lossC'], 'losses/val/lossD': val_losses['lossD'], 'losses/val/lossT': val_losses['lossT']})
-            elif (args.radi_displacement > 0):
-                wandb.log({'losses/train/lossC': train_losses['lossC'], 'losses/train/lossD': train_losses['lossD'], 'losses/val/lossC': val_losses['lossC'], 'losses/val/lossD': val_losses['lossD']})
-            elif (args.event_team):
-                wandb.log({'losses/train/lossC': train_losses['lossC'], 'losses/train/lossT': train_losses['lossT'], 'losses/val/lossC': val_losses['lossC'], 'losses/val/lossT': val_losses['lossT']})
-            else:
-                wandb.log({'losses/train/lossC': train_losses['lossC'], 'losses/val/lossC': val_losses['lossC']})
+    #         if (args.radi_displacement > 0) & (args.event_team):
+    #             wandb.log({'losses/train/lossC': train_losses['lossC'], 'losses/train/lossD': train_losses['lossD'], 'losses/train/lossT': train_losses['lossT'], 'losses/val/lossC': val_losses['lossC'], 'losses/val/lossD': val_losses['lossD'], 'losses/val/lossT': val_losses['lossT']})
+    #         elif (args.radi_displacement > 0):
+    #             wandb.log({'losses/train/lossC': train_losses['lossC'], 'losses/train/lossD': train_losses['lossD'], 'losses/val/lossC': val_losses['lossC'], 'losses/val/lossD': val_losses['lossD']})
+    #         elif (args.event_team):
+    #             wandb.log({'losses/train/lossC': train_losses['lossC'], 'losses/train/lossT': train_losses['lossT'], 'losses/val/lossC': val_losses['lossC'], 'losses/val/lossT': val_losses['lossT']})
+    #         else:
+    #             wandb.log({'losses/train/lossC': train_losses['lossC'], 'losses/val/lossC': val_losses['lossC']})
 
 
-            if args.save_dir is not None:
-                os.makedirs(args.save_dir, exist_ok=True)
-                store_json(os.path.join(args.save_dir, 'loss.json'), losses,
-                            pretty=True)
+    #         if args.save_dir is not None:
+    #             os.makedirs(args.save_dir, exist_ok=True)
+    #             store_json(os.path.join(args.save_dir, 'loss.json'), losses,
+    #                         pretty=True)
 
-                if better:
-                    torch.save(
-                        model.state_dict(),
-                        os.path.join(args.save_dir, 'checkpoint_best.pt'))
+    #             if better:
+    #                 torch.save(
+    #                     model.state_dict(),
+    #                     os.path.join(args.save_dir, 'checkpoint_best.pt'))
 
     print('START INFERENCE')
     model.load(torch.load(os.path.join(
@@ -267,9 +269,16 @@ def main(args):
             print('Split {} does not exist'.format(split))
             continue
 
+        print("classes: " + str(classes))
+        print("split_path: " + str(split_path))
+        print("frame_dir: " + str(args.frame_dir))
+        
         split_data = ActionSpotVideoDataset(classes, split_path, args.frame_dir, args.modality,
                 # args.clip_len, overlap_len = 0, stride = stride, dataset = args.dataset, event_team = args.event_team)
                 args.clip_len, overlap_len = args.clip_len // 4 * 3, stride = stride, dataset = args.dataset, event_team = args.event_team)
+
+        print("split_data: " + str(split_data))
+        print("dataset: " + str(args.dataset))
         
         pred_file = None
         if args.save_dir is not None:

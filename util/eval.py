@@ -10,6 +10,7 @@ from collections import defaultdict
 import copy
 import os
 import json
+import zipfile
 
 #Local imports
 # from util.score import compute_mAPs
@@ -149,7 +150,7 @@ def mAPevaluate(model, dataset, classes, printed=True, event_team = False, metri
     
     return results['mAP']
 
-def mAPevaluateTest(SoccerNet_path, Predictions_path, prediction_file="results_spotting.json", split = "test", printed=False, event_team=True, metric="at1"):
+def mAPevaluateCodabench(SoccerNet_path, Predictions_path, prediction_file="results_spotting.json", split = "test", printed=False, event_team=True, metric="at1"):
 
     #Compute metric
     detections_numpy = list()
@@ -180,13 +181,13 @@ def mAPevaluateTest(SoccerNet_path, Predictions_path, prediction_file="results_s
             labels = json.load(open(os.path.join(SoccerNet_path, game, 'Labels-ball.json')))
         num_classes = len(classes)
         # convert labels to vector
-        labels = label2vector(labels, num_classes=num_classes, version=2, EVENT_DICTIONARY=classes, framerate=FPS_SN, event_team = event_team)
+        labels = label2vector(labels, num_classes=num_classes, EVENT_DICTIONARY=classes, framerate=FPS_SN, event_team = event_team)
         
         if zipfile.is_zipfile(Predictions_path):
             predictions = LoadJsonFromZip(Predictions_path, os.path.join(game, prediction_file))
         else:
             predictions = json.load(open(os.path.join(Predictions_path, game, prediction_file)))
-        predictions = predictions2vector(predictions, num_classes=num_classes, version=2, EVENT_DICTIONARY=classes, framerate=FPS_SN, event_team = event_team)
+        predictions = predictions2vector(predictions, num_classes=num_classes, EVENT_DICTIONARY=classes, framerate=FPS_SN, event_team = event_team)
 
         targets_numpy.append(labels)
         detections_numpy.append(predictions)
@@ -223,13 +224,13 @@ def mAPevaluateTest(SoccerNet_path, Predictions_path, prediction_file="results_s
                 labels = json.load(open(os.path.join(SoccerNet_path, game, 'Labels-ball.json')))
             num_classes = len(aux_classes)
             # convert labels to vector
-            labels = label2vector(labels, num_classes=num_classes, version=2, EVENT_DICTIONARY=aux_classes, framerate=FPS_SN, event_team = False)
+            labels = label2vector(labels, num_classes=num_classes, EVENT_DICTIONARY=aux_classes, framerate=FPS_SN, event_team = False)
 
             if zipfile.is_zipfile(Predictions_path):
                 predictions = LoadJsonFromZip(Predictions_path, os.path.join(game, prediction_file))
             else:
                 predictions = json.load(open(os.path.join(Predictions_path, game, prediction_file)))
-            predictions = predictions2vector(predictions, num_classes=num_classes, version=2, EVENT_DICTIONARY=aux_classes, framerate=FPS_SN, event_team = False)
+            predictions = predictions2vector(predictions, num_classes=num_classes, EVENT_DICTIONARY=aux_classes, framerate=FPS_SN, event_team = False)
 
             targets_numpy.append(labels)
             detections_numpy.append(predictions)
